@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>直播监控节点看板</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>直播监控节点看板</h1>
+      <p class="lead">
+        统一配置关键词、平台、汇总时间与黑名单后即可启动监控。每次抓取按
+        <strong>节点时间</strong>
+        保留，企业微信默认只推送
+        <strong>当前节点</strong>
+        数据，支持按节点范围立即汇总推送。
+      </p>
+
+      <div class="global-toolbar">
+        <button id="refreshBtn" type="button" class="ghost">刷新状态</button>
+        <button id="exportBtn" type="button">导出所选平台数据</button>
+        <span id="globalStatus" class="status-line">状态: —</span>
+      </div>
+
+      <section class="panel" id="configPanel">
+        <h2>统一配置</h2>
+        <div class="grid form-grid">
+          <label class="span-2 platform-picks">
+            <span>监控平台</span>
+            <div class="checkbox-row" id="platformPicker">
+              {% for p in platforms %}
+              <label class="inline-check">
+                <input type="checkbox" data-role="platformItem" value="{{ p.name }}" {% if loop.first %}checked{% endif %} />
+                {{ p.label }}
+              </label>
+              {% endfor %}
+            </div>
+          </label>
+          <label>关键词（逗号分隔）<input id="keywords" value="{{ platforms[0].default_keywords if platforms else '' }}" /></label>
+          <label>抓取间隔（分钟）<input id="intervalMinutes" type="number" value="120" min="1" max="1440" /></label>
+          <label>汇总时间<input id="summaryTime" type="time" value="17:00" /></label>
+          <label>汇总起始节点时间<input id="summaryRangeStart" type="time" value="00:00" /></label>
+          <label>汇总结束节点时间<input id="summaryRangeEnd" type="time" value="23:59" /></label>
+          <label>最大页数<input id="maxPages" type="number" value="2" min="1" /></label>
+          <label>并发数量<input id="wsWorkers" type="number" value="16" min="2" max="64" /></label>
+          <label class="span-2 inline-check">
+            <input id="enableWs" type="checkbox" checked />
+            启用实时数据补全
+          </label>
+          <label class="span-2">
+            企业微信 Webhook
+            <input id="wecomWebhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
+          </label>
+          <label class="span-2 inline-check">
+            <input id="wecomAutoPush" type="checkbox" checked />
+            节点抓取完成后自动推送当前节点
+          </label>
+          <label class="span-2 blacklist-label">
+            黑名单作者主页链接
+            <textarea id="blacklistAuthors" rows="5" placeholder="每行一个作者主页链接，命中后该作者的直播数据不再进入监控与汇总。"></textarea>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="saveConfigBtn" type="button" class="ghost">保存统一配置</button>
+          <button id="unlockConfigBtn" type="button" class="ghost">重新配置</button>
+          <button id="startBtn" type="button">启动所选平台监控</button>
+          <button id="stopBtn" type="button" class="ghost">停止所选平台监控</button>
+          <button id="pushCurrentBtn" type="button" class="ghost">立即推送当前节点</button>
+        </div>
+        <p id="configStatus" class="status-line">统一配置: 未加载</p>
+      </section>
+
+      <section class="panel">
+        <h2>节点汇总</h2>
+        <p class="panel-hint">选择节点起止时间后立即汇总并推送企业微信。</p>
+        <div class="grid form-grid">
+          <label>起始节点<select id="summaryStartNode"><option value="">请选择起始节点</option></select></label>
+          <label>结束节点<select id="summaryEndNode"><option value="">请选择结束节点</option></select></label>
+        </div>
+        <div class="btn-row">
+          <button id="pushSummaryBtn" type="button">立即汇总并推送</button>
+        </div>
+        <p id="summaryRangeStatus" class="status-line">节点汇总: 未加载节点列表</p>
+      </section>
+
+      <section class="panel cookie-panel">
+        <h2>抖音 Cookie</h2>
+        <p class="panel-hint">
+          抖音搜索接口需要登录态 Cookie。可粘贴整段 Cookie / JSON，也可直接用自动化浏览器扫码登录后刷新获取。
+        </p>
+        <div class="btn-row">
+          <button id="autoCookieStartBtn" type="button">自动获取 Cookie</button>
+          <button id="autoCookieRefreshBtn" type="button" class="ghost">刷新获取 Cookie</button>
+        </div>
+        <p id="cookieAutoStatus" class="status-line">自动化状态: 未启动</p>
+        <label class="blacklist-label">
+          抖音 Cookie（字符串或 JSON）
+          <textarea id="douyinCookie" rows="6" placeholder="支持整段 Cookie 字符串，或 {&quot;a&quot;:&quot;b&quot;} / [{&quot;name&quot;:&quot;a&quot;,&quot;value&quot;:&quot;b&quot;}]"></textarea>
+        </label>
+        <div class="btn-row">
+          <button id="saveCookieBtn" type="button">保存抖音 Cookie</button>
+          <button id="reloadCookieBtn" type="button" class="ghost">查看当前 Cookie 状态</button>
+        </div>
+        <p id="cookieStatus" class="status-line">Cookie 状态: 加载中…</p>
+      </section>
+
+      <section class="panel">
+        <h2>平台概览</h2>
+        <div id="overviewCards" class="overview-grid"></div>
+      </section>
+
+      <section class="panel">
+        <h2>当前节点数据</h2>
+        <div id="platformTables" class="tables-stack">
+          {% for p in platforms %}
+          <section class="platform-data" data-platform="{{ p.name }}" data-label="{{ p.label }}">
+            <div class="section-head">
+              <h3>{{ p.label }}</h3>
+              <p class="platform-meta" data-role="platformMeta">状态: 未加载</p>
+            </div>
+            <div class="table-wrap">
+              <table class="rooms-table" data-platform="{{ p.name }}">
+                <thead>
+                  <tr>
+                    <th>关键词</th>
+                    <th>节点时间</th>
+                    <th>作者主页</th>
+                    <th>直播间</th>
+                    <th>主播</th>
+                    <th>标题</th>
+                    <th>开播时间</th>
+                    <th>看过</th>
+                    <th>点赞</th>
+                    <th>点赞来源</th>
+                    <th>在线/热度</th>
+                    <th>看过Δ</th>
+                    <th>点赞Δ</th>
+                    <th>附加信息</th>
+                  </tr>
+                </thead>
+                <tbody data-role="roomsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

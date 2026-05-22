@@ -1,0 +1,12 @@
+{
+  "bilibili": {
+    "webhook_url": "",
+    "updated_at": "",
+    "auto_push": false
+  },
+  "douyin": {
+    "webhook_url": "",
+    "updated_at": "",
+    "auto_push": false
+  }
+}
