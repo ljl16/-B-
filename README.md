@@ -1,4 +1,4 @@
-<img width="1050" height="1284" alt="2688782cba3234472e188689e9cb84f6" src="https://github.com/user-attachments/assets/8343cbe3-ddba-44c4-8645-e3af2092a47d" /># 直播监控节点看板
+# 直播监控节点看板
 
 一个专门为 **抖音 / B站直播监控** 打造的节点化数据看板。
 
@@ -296,7 +296,7 @@ http://127.0.0.1:5056
 > 把直播监控从“人工刷新  + 人工汇总 + 人工发群”，升级成“节点化抓取 + 自动沉淀 + 一键汇总推送”。
 
 
-
+## 创作不易感谢打赏
 
 <img width="1050" height="1284" alt="2688782cba3234472e188689e9cb84f6" src="https://github.com/user-attachments/assets/c769d1b1-6714-432f-bebe-59480bf13098" />
 
